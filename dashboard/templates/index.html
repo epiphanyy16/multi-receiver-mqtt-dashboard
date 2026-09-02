@@ -1,0 +1,109 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>BLE Receiver Dashboard</title>
+  <style>
+    body { font-family: sans-serif; margin: 1.5rem; color: #222; }
+    header { display: flex; gap: 1.5rem; align-items: baseline; flex-wrap: wrap; }
+    table { width: 100%; border-collapse: collapse; margin-top: 1rem; }
+    th, td { border: 1px solid #ccc; padding: 0.4rem; text-align: left; }
+    th { background: #eee; position: sticky; top: 0; }
+    .ok { color: #176b2c; }
+    .bad { color: #a52323; }
+    .invalid { background: #fff2f2; }
+    code { white-space: pre-wrap; overflow-wrap: anywhere; }
+    button { padding: 0.35rem 0.7rem; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>BLE Receiver Dashboard</h1>
+    <span>MQTT: <strong id="mqtt-status">checking</strong></span>
+    <span>Packets shown: <strong id="packet-count">0</strong></span>
+    <button id="clear-button" type="button">Clear table</button>
+  </header>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Dashboard event</th>
+        <th>Received (UTC)</th>
+        <th>Arduino</th>
+        <th>RSSI (dBm)</th>
+        <th>Arduino packet count</th>
+        <th>Topic</th>
+        <th>Raw payload</th>
+      </tr>
+    </thead>
+    <tbody id="packet-rows"></tbody>
+  </table>
+
+  <script>
+    const rows = document.getElementById("packet-rows");
+    const count = document.getElementById("packet-count");
+    const mqttStatus = document.getElementById("mqtt-status");
+    let displayedPackets = 0;
+
+    function cell(row, value) {
+      const element = document.createElement("td");
+      element.textContent = value ?? "—";
+      row.appendChild(element);
+    }
+
+    function showPacket(event) {
+      const row = document.createElement("tr");
+      if (!event.valid) {
+        row.className = "invalid";
+        row.title = event.error || "Invalid packet";
+      }
+      cell(row, event.event_id);
+      cell(row, event.received_at);
+      cell(row, event.receiver_id);
+      cell(row, event.rssi);
+      cell(row, event.packet_count);
+      cell(row, event.topic);
+
+      const payloadCell = document.createElement("td");
+      const payload = document.createElement("code");
+      payload.textContent = event.raw_payload;
+      payloadCell.appendChild(payload);
+      row.appendChild(payloadCell);
+
+      rows.appendChild(row);
+      displayedPackets += 1;
+      count.textContent = displayedPackets;
+    }
+
+    const stream = new EventSource("/events");
+    stream.onmessage = (message) => showPacket(JSON.parse(message.data));
+    stream.onerror = () => {
+      mqttStatus.textContent = "dashboard stream reconnecting";
+      mqttStatus.className = "bad";
+    };
+    stream.onopen = () => updateStatus();
+
+    async function updateStatus() {
+      try {
+        const response = await fetch("/api/status", { cache: "no-store" });
+        const state = await response.json();
+        mqttStatus.textContent = state.connected ? "connected" : state.reason;
+        mqttStatus.className = state.connected ? "ok" : "bad";
+      } catch (error) {
+        mqttStatus.textContent = "dashboard unavailable";
+        mqttStatus.className = "bad";
+      }
+    }
+
+    document.getElementById("clear-button").addEventListener("click", () => {
+      rows.replaceChildren();
+      displayedPackets = 0;
+      count.textContent = "0";
+    });
+
+    updateStatus();
+    setInterval(updateStatus, 3000);
+  </script>
+</body>
+</html>
