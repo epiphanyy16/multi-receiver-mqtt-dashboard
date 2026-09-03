@@ -150,8 +150,8 @@ def create_app(start_mqtt=True):
         )
 
     if start_mqtt:
-        broker_host = os.getenv("MQTT_HOST", "127.0.0.1")
-        broker_port = int(os.getenv("MQTT_PORT", "1883"))
+        broker_host = os.getenv("MQTT_HOST", "127.0.0.1") or "127.0.0.1"
+        broker_port = int(os.getenv("MQTT_PORT", "1883") or "1883")
         topic_filter = os.getenv("MQTT_TOPIC", "BLEReceiver/+")
         client_id = f"BLE-dashboard-{uuid.uuid4().hex[:10]}"
 
