@@ -1,0 +1,569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BLE Emergency Switch — Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Courier New", Courier, monospace;
+            background-color: #1a1a2e;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+        }
+
+        h1 {
+            color: #e94560;
+            font-size: 1.4em;
+            margin-bottom: 16px;
+        }
+
+        /* --- Connection bar --- */
+        .connection-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            background-color: #16213e;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+
+        .connection-bar label {
+            font-size: 0.85em;
+            color: #a0a0b0;
+        }
+
+        .connection-bar input {
+            background: #0f3460;
+            border: 1px solid #333;
+            color: #e0e0e0;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-family: inherit;
+            font-size: 0.85em;
+            width: 200px;
+        }
+
+        .connection-bar button {
+            background-color: #e94560;
+            color: white;
+            border: none;
+            padding: 6px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.85em;
+        }
+
+        .connection-bar button:hover {
+            background-color: #c73e54;
+        }
+
+        .connection-bar button.sim-btn {
+            background-color: #0f3460;
+            border: 1px solid #333;
+        }
+
+        .connection-bar button.sim-btn:hover {
+            background-color: #1a4a7a;
+        }
+
+        .connection-bar button.sim-btn.active {
+            background-color: #e94560;
+            border-color: #e94560;
+        }
+
+        /* --- Status indicator --- */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-left: auto;
+            font-size: 0.85em;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: #ff4444;
+        }
+
+        .status-dot.connected {
+            background-color: #44ff44;
+        }
+
+        /* --- Stats bar --- */
+        .stats-bar {
+            display: flex;
+            gap: 24px;
+            background-color: #16213e;
+            padding: 10px 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 0.85em;
+            color: #a0a0b0;
+            flex-wrap: wrap;
+        }
+
+        .stats-bar span strong {
+            color: #e0e0e0;
+        }
+
+        /* --- Chart --- */
+        .chart-container {
+            background-color: #16213e;
+            border-radius: 6px;
+            padding: 12px;
+            margin-bottom: 12px;
+        }
+
+        .chart-container h2 {
+            font-size: 0.9em;
+            color: #a0a0b0;
+            margin-bottom: 8px;
+        }
+
+        canvas {
+            width: 100%;
+            height: 150px;
+            display: block;
+        }
+
+        /* --- Log area --- */
+        .log-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .log-header h2 {
+            font-size: 1em;
+            color: #a0a0b0;
+        }
+
+        .log-header button {
+            background: #333;
+            color: #a0a0b0;
+            border: none;
+            padding: 4px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 0.8em;
+        }
+
+        #log {
+            flex: 1;
+            background-color: #0f0f1a;
+            border: 1px solid #333;
+            border-radius: 6px;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 0.85em;
+            line-height: 1.6;
+            min-height: 200px;
+        }
+
+        .log-entry {
+            padding: 4px 0;
+            border-bottom: 1px solid #1a1a2e;
+        }
+
+        .log-entry .timestamp {
+            color: #5c7aaa;
+        }
+
+        .log-entry .rssi {
+            color: #e94560;
+        }
+
+        .log-entry .pkt {
+            color: #44ff44;
+        }
+
+        .log-entry.system {
+            color: #666;
+            font-style: italic;
+        }
+
+        .log-entry.error {
+            color: #ff6b6b;
+            font-style: italic;
+        }
+
+        /* --- Error banner --- */
+        .error-banner {
+            display: none;
+            background-color: #4a1a1a;
+            border: 1px solid #ff4444;
+            color: #ff6b6b;
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-bottom: 12px;
+            font-size: 0.85em;
+        }
+
+        .error-banner.show {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>📡 BLE Emergency Switch — Dashboard</h1>
+
+    <!-- Error banner for critical issues -->
+    <div class="error-banner" id="errorBanner"></div>
+
+    <!-- Connection controls -->
+    <div class="connection-bar">
+        <label for="brokerInput">Broker IP:</label>
+        <input type="text" id="brokerInput" placeholder="192.168.43.100" value="">
+        <label for="portInput">WS Port:</label>
+        <input type="text" id="portInput" placeholder="9001" value="9001" style="width:70px;">
+        <button id="connectBtn" onclick="toggleConnection()">Connect</button>
+        <button class="sim-btn" id="simBtn" onclick="toggleSimulator()">Simulator</button>
+        <div class="status">
+            <div class="status-dot" id="statusDot"></div>
+            <span id="statusText">Disconnected</span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-bar">
+        <span>Packets received: <strong id="packetCount">0</strong></span>
+        <span>Last RSSI: <strong id="lastRssi">—</strong></span>
+        <span>Last packet #: <strong id="lastPktCount">—</strong></span>
+        <span>Avg RSSI: <strong id="avgRssi">—</strong></span>
+    </div>
+
+    <!-- RSSI Chart -->
+    <div class="chart-container">
+        <h2>RSSI History (last 50 readings)</h2>
+        <canvas id="rssiChart" height="150"></canvas>
+    </div>
+
+    <!-- Log -->
+    <div class="log-header">
+        <h2>Message Log</h2>
+        <button onclick="clearLog()">Clear</button>
+    </div>
+    <div id="log">
+        <div class="log-entry system">Waiting for connection...</div>
+    </div>
+
+    <!-- MQTT.js loaded from local file (no CDN dependency) -->
+    <script src="mqtt.min.js"></script>
+
+    <script>
+        const MQTT_TOPIC = "BLEReceiver/001";
+
+        let mqttClient = null;
+        let packetCount = 0;
+        let rssiHistory = [];
+        let simInterval = null;
+        let rssiSum = 0;
+
+        const logDiv = document.getElementById("log");
+        const statusDot = document.getElementById("statusDot");
+        const statusText = document.getElementById("statusText");
+        const packetCountEl = document.getElementById("packetCount");
+        const lastRssiEl = document.getElementById("lastRssi");
+        const lastPktCountEl = document.getElementById("lastPktCount");
+        const avgRssiEl = document.getElementById("avgRssi");
+        const connectBtn = document.getElementById("connectBtn");
+        const simBtn = document.getElementById("simBtn");
+        const brokerInput = document.getElementById("brokerInput");
+        const portInput = document.getElementById("portInput");
+        const errorBanner = document.getElementById("errorBanner");
+        const canvas = document.getElementById("rssiChart");
+        const ctx = canvas.getContext("2d");
+
+        // --- Check if MQTT.js loaded ---
+        window.addEventListener("load", function () {
+            if (typeof mqtt === "undefined") {
+                showError(
+                    "MQTT.js library failed to load. Make sure 'mqtt.min.js' is in the same folder as this HTML file. " +
+                    "The dashboard cannot connect to the broker without it."
+                );
+                connectBtn.disabled = true;
+            }
+        });
+
+        function showError(msg) {
+            errorBanner.textContent = msg;
+            errorBanner.classList.add("show");
+        }
+
+        function hideError() {
+            errorBanner.classList.remove("show");
+        }
+
+        function addLog(message, isSystem, isError) {
+            const entry = document.createElement("div");
+            let cls = "log-entry";
+            if (isSystem) cls += " system";
+            if (isError) cls += " error";
+            entry.className = cls;
+
+            const now = new Date();
+            const ts = now.toLocaleTimeString("en-GB", { hour12: false });
+
+            if (isSystem || isError) {
+                entry.textContent = "[" + ts + "] " + message;
+            } else {
+                entry.innerHTML = message;
+            }
+
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+
+            // Keep log from growing too large
+            while (logDiv.children.length > 200) {
+                logDiv.removeChild(logDiv.firstChild);
+            }
+        }
+
+        function clearLog() {
+            logDiv.innerHTML = "";
+            addLog("Log cleared.", true);
+        }
+
+        function setStatus(connected) {
+            if (connected) {
+                statusDot.className = "status-dot connected";
+                statusText.textContent = "Connected";
+                connectBtn.textContent = "Disconnect";
+            } else {
+                statusDot.className = "status-dot";
+                statusText.textContent = "Disconnected";
+                connectBtn.textContent = "Connect";
+            }
+        }
+
+        // --- RSSI Chart ---
+        function drawChart() {
+            const dpr = window.devicePixelRatio || 1;
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * dpr;
+            canvas.height = rect.height * dpr;
+            ctx.scale(dpr, dpr);
+
+            const w = rect.width;
+            const h = rect.height;
+            const pad = { top: 10, right: 10, bottom: 20, left: 45 };
+            const plotW = w - pad.left - pad.right;
+            const plotH = h - pad.top - pad.bottom;
+
+            // Clear
+            ctx.clearRect(0, 0, w, h);
+
+            // Y-axis range: RSSI typically -100 to -20
+            const yMin = -100;
+            const yMax = -20;
+
+            // Grid lines
+            ctx.strokeStyle = "#2a2a3e";
+            ctx.lineWidth = 1;
+            ctx.font = "10px Courier New";
+            ctx.fillStyle = "#666";
+
+            for (let rssi = -100; rssi <= -20; rssi += 20) {
+                const y = pad.top + plotH - ((rssi - yMin) / (yMax - yMin)) * plotH;
+                ctx.beginPath();
+                ctx.moveTo(pad.left, y);
+                ctx.lineTo(w - pad.right, y);
+                ctx.stroke();
+                ctx.fillText(rssi + " dBm", 2, y + 3);
+            }
+
+            if (rssiHistory.length < 2) {
+                ctx.fillStyle = "#555";
+                ctx.font = "12px Courier New";
+                ctx.textAlign = "center";
+                ctx.fillText("Waiting for data...", w / 2, h / 2);
+                ctx.textAlign = "left";
+                return;
+            }
+
+            // Draw line
+            ctx.beginPath();
+            ctx.strokeStyle = "#e94560";
+            ctx.lineWidth = 2;
+
+            const maxPoints = 50;
+            const data = rssiHistory.slice(-maxPoints);
+
+            for (let i = 0; i < data.length; i++) {
+                const x = pad.left + (i / (maxPoints - 1)) * plotW;
+                const y = pad.top + plotH - ((data[i] - yMin) / (yMax - yMin)) * plotH;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+
+            // Draw dots
+            ctx.fillStyle = "#e94560";
+            for (let i = 0; i < data.length; i++) {
+                const x = pad.left + (i / (maxPoints - 1)) * plotW;
+                const y = pad.top + plotH - ((data[i] - yMin) / (yMax - yMin)) * plotH;
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Redraw chart on resize
+        window.addEventListener("resize", drawChart);
+
+        // --- Process incoming data ---
+        function processMessage(raw) {
+            const now = new Date();
+            const ts = now.toLocaleTimeString("en-GB", { hour12: false });
+
+            packetCount++;
+            packetCountEl.textContent = packetCount;
+
+            try {
+                const data = JSON.parse(raw);
+                if (data.rssi !== undefined) {
+                    lastRssiEl.textContent = data.rssi;
+                    rssiHistory.push(data.rssi);
+                    if (rssiHistory.length > 50) rssiHistory.shift();
+                    rssiSum += data.rssi;
+                    avgRssiEl.textContent = (rssiSum / packetCount).toFixed(1);
+                    drawChart();
+                }
+                if (data.packet_count !== undefined) {
+                    lastPktCountEl.textContent = data.packet_count;
+                }
+
+                addLog(
+                    '<span class="timestamp">[' + ts + ']</span> ' +
+                    'RSSI: <span class="rssi">' + data.rssi + '</span> ' +
+                    '| Packet #: <span class="pkt">' + data.packet_count + '</span> ' +
+                    '<span style="color:#555">| Raw: ' + raw + '</span>',
+                    false
+                );
+            } catch (e) {
+                addLog(
+                    '<span class="timestamp">[' + ts + ']</span> ' + raw,
+                    false
+                );
+            }
+        }
+
+        // --- MQTT Connection ---
+        function toggleConnection() {
+            if (mqttClient && mqttClient.connected) {
+                mqttClient.end();
+                mqttClient = null;
+                setStatus(false);
+                addLog("Disconnected by user.", true);
+                return;
+            }
+
+            if (typeof mqtt === "undefined") {
+                addLog("ERROR: MQTT.js library not loaded. Cannot connect.", true, true);
+                return;
+            }
+
+            const brokerIp = brokerInput.value.trim();
+            const wsPort = portInput.value.trim() || "9001";
+
+            if (!brokerIp) {
+                addLog("ERROR: Enter a broker IP address.", true, true);
+                return;
+            }
+
+            const url = "ws://" + brokerIp + ":" + wsPort;
+            addLog("Connecting to " + url + "...", true);
+            hideError();
+
+            try {
+                mqttClient = mqtt.connect(url, {
+                    clientId: "Dashboard_" + Math.random().toString(16).slice(2, 8),
+                    reconnectPeriod: 5000,
+                    connectTimeout: 10000,
+                });
+            } catch (e) {
+                addLog("ERROR: Failed to create connection: " + e.message, true, true);
+                return;
+            }
+
+            mqttClient.on("connect", function () {
+                setStatus(true);
+                addLog("Connected to broker at " + brokerIp, true);
+                mqttClient.subscribe(MQTT_TOPIC, function (err) {
+                    if (err) {
+                        addLog("Subscribe error: " + err.message, true, true);
+                    } else {
+                        addLog("Subscribed to topic: " + MQTT_TOPIC, true);
+                    }
+                });
+            });
+
+            mqttClient.on("message", function (topic, message) {
+                processMessage(message.toString());
+            });
+
+            mqttClient.on("error", function (err) {
+                addLog("MQTT error: " + err.message, true, true);
+            });
+
+            mqttClient.on("close", function () {
+                setStatus(false);
+                addLog("Connection closed.", true);
+            });
+
+            mqttClient.on("reconnect", function () {
+                addLog("Reconnecting...", true);
+            });
+        }
+
+        // --- Simulator ---
+        function toggleSimulator() {
+            if (simInterval) {
+                clearInterval(simInterval);
+                simInterval = null;
+                simBtn.classList.remove("active");
+                simBtn.textContent = "Simulator";
+                addLog("Simulator stopped.", true);
+                return;
+            }
+
+            simBtn.classList.add("active");
+            simBtn.textContent = "Stop Sim";
+            addLog("Simulator started — generating fake data every 2s.", true);
+
+            let simPktCount = 0;
+            simInterval = setInterval(function () {
+                simPktCount++;
+                const fakeRssi = -30 - Math.floor(Math.random() * 50);
+                const payload = JSON.stringify({
+                    rssi: fakeRssi,
+                    packet_count: simPktCount
+                });
+                processMessage(payload);
+            }, 2000);
+        }
+
+        // Initial chart draw
+        drawChart();
+    </script>
+
+</body>
+</html>
