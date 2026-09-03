@@ -9,7 +9,7 @@ char ssid[] = "YOUR_HOTSPOT_NAME";
 char pass[] = "YOUR_HOTSPOT_PASSWORD";
 
 const char* targetAddress = "E2:15:00:0A:72:43";
-IPAddress mqttServer(192, 168, 1, 5);
+IPAddress mqttServer(172, 20, 10, 2);
 
 const char* receiverId = "001";
 const char* mqttClientId = "BLEReceiver001";
@@ -37,11 +37,11 @@ void wifiReconnect() {
 
   wifiStatus = WiFi.status();
   Serial.println();
-  Serial.print("WiFi status code: ");
+  Serial.print("Status code: ");
   Serial.println(wifiStatus);
 
   if (wifiStatus != WL_CONNECTED) {
-    Serial.println("Connection attempt failed; retrying...");
+    Serial.println("Connection attempt failed, will retry...");
   }
 }
 
@@ -83,7 +83,7 @@ void setup() {
 
   client.setServer(mqttServer, 1883);
 
-  while (WiFi.status() != WL_CONNECTED) {
+  while (wifiStatus != WL_CONNECTED) {
     wifiReconnect();
   }
   Serial.println("Connected to WiFi");
