@@ -15,6 +15,8 @@ The two Arduinos detect the same ID-card switch independently. Every detection i
 
 All four laptops, both Nano 33 IoT boards, and the broker must be able to reach the same local network. A phone hotspot is sufficient only if it permits devices on the hotspot to communicate with one another. Some hotspots enable client isolation; use a normal WiFi router or a laptop hotspot if peer-to-peer connections are blocked.
 
+Set a mobile hotspot to **2.4 GHz** and **WPA2**. The Nano 33 IoT cannot join a 5 GHz-only hotspot, and WPA3-only authentication can produce `WL_CONNECT_FAILED (4)`. On an iPhone, enable **Maximize Compatibility**. On Android, choose the 2.4 GHz/AP band and WPA2 options if the phone exposes them.
+
 Install:
 
 - Laptop 1 and 2: Arduino IDE 2.x
@@ -67,6 +69,8 @@ IPAddress mqttServer(192, 168, 1, 5);
 ```
 
 Replace the SSID and password, verify the ID-card switch MAC address, and write laptop 3's IPv4 address as four comma-separated numbers. Do not give both boards the same receiver sketch: their unique MQTT client IDs prevent the broker from disconnecting one when the other connects.
+
+The repository deliberately contains `YOUR_HOTSPOT_NAME` and `YOUR_HOTSPOT_PASSWORD`, not real credentials. Replace both placeholders in each sketch before uploading. SSIDs and passwords are case-sensitive.
 
 For each receiver:
 
@@ -246,6 +250,17 @@ The dashboard retains the latest 20,000 events in memory. Browser stream reconne
 - Confirm the board joined the same hotspot.
 - Confirm TCP port 1883 is allowed through laptop 3's firewall.
 - Watch `docker compose logs -f mosquitto` on laptop 3 while resetting the board.
+
+### Arduino reports `WL_CONNECT_FAILED (4)`
+
+This is a WiFi association/authentication failure; waiting longer will not fix it.
+
+- Confirm that neither credential still contains `YOUR_HOTSPOT_...`.
+- Re-enter the exact case-sensitive hotspot password.
+- Set the hotspot to 2.4 GHz and WPA2/compatibility mode, not 5 GHz-only or WPA3-only.
+- Disconnect another device if the phone has reached its hotspot client limit.
+- Reset the Nano after changing hotspot settings.
+- The sketch prints the same numeric `Status code:` format as the supplied reference code and retries every 20 seconds.
 
 ### Serial Monitor shows no BLE detection
 
