@@ -64,6 +64,16 @@ The Nano 33 IoT needs a 2.4 GHz, WPA2-compatible network. It cannot join a
 5 GHz-only network. NINA-W102 firmware 3.0.0 or later is required to run Wi-Fi
 and BLE together.
 
+Two Wi-Fi display variants are available:
+
+| Variant | Receiver files | Connection display |
+|---|---|---|
+| Current/default | `arduino/receiver_001/` and `arduino/receiver_002/` | Starts an attempt, then waits 10 seconds before retrying |
+| Dotted/legacy | `arduino/dotted_wifi/receiver_001/` and `arduino/dotted_wifi/receiver_002/` | Prints `.` every 500 ms for up to 20 seconds, prints the status code, then retries |
+
+Both variants retain the same receiver IDs, MQTT topics, BLE scanning, payload
+format, and LED behavior. Use only one variant per Arduino.
+
 ## MQTT event format
 
 Each receiver has a unique MQTT client ID, topic, and payload receiver ID:
@@ -86,6 +96,8 @@ in its MQTT topic.
 |---|---|
 | `arduino/receiver_001/receiver_001.ino` | Deployment sketch for receiver 001 |
 | `arduino/receiver_002/receiver_002.ino` | Deployment sketch for receiver 002 |
+| `arduino/dotted_wifi/receiver_001/receiver_001.ino` | Receiver 001 with legacy dotted Wi-Fi feedback |
+| `arduino/dotted_wifi/receiver_002/receiver_002.ino` | Receiver 002 with legacy dotted Wi-Fi feedback |
 | `arduino/connection_test/connection_test.ino` | Standalone LED wiring test |
 | `ESW_BLE_Code_1.ino` | Supplied/reference single-receiver sketch |
 | `broker/` | Mosquitto configuration and Docker Compose service |
