@@ -54,7 +54,7 @@ Keep laptop 3 on the same IP during the test. If the hotspot assigns it a new ad
 
 ## 3. Configure and flash the Arduinos
 
-The supplied `ESW_BLE_Code_1.ino` remains unchanged. Use the two deployment copies:
+Treat `ESW_BLE_Code_1.ino` as the reference sketch. Use the two deployment copies:
 
 - Laptop 1: `arduino/receiver_001/receiver_001.ino`
 - Laptop 2: `arduino/receiver_002/receiver_002.ino`
@@ -65,7 +65,7 @@ At the top of each sketch, set:
 char ssid[] = "YOUR_HOTSPOT_NAME";
 char pass[] = "YOUR_HOTSPOT_PASSWORD";
 const char* targetAddress = "E2:15:00:0A:72:43";
-IPAddress mqttServer(192, 168, 1, 5);
+IPAddress mqtt_server(192, 168, 1, 5);
 ```
 
 Replace the SSID and password, verify the ID-card switch MAC address, and write laptop 3's IPv4 address as four comma-separated numbers. Do not give both boards the same receiver sketch: their unique MQTT client IDs prevent the broker from disconnecting one when the other connects.
@@ -85,11 +85,13 @@ A successful startup contains:
 
 ```text
 Connected to WiFi
-Connected as BLEReceiver001
-BLE receiver 001 scanning for E2:15:00:0A:72:43
+BLE Central - Scan For Address
+Attempting to connect to MQTT Server: 192.168.1.5
+Connected to MQTT Server
 ```
 
-Receiver 002 prints the corresponding `002` values.
+The receiver ID appears in every detected-packet block. Receiver 002 prints
+`Receiver ID: 002`; receiver 001 prints `Receiver ID: 001`.
 
 ## 4. Start the broker on laptop 3
 
@@ -142,7 +144,7 @@ docker compose up -d --build
 docker compose logs -f dashboard
 ```
 
-Open <http://localhost:5000> on laptop 4. The header must show `MQTT: connected`. Every MQTT callback is logged in the container console and added as a separate table row; repeated payloads and repeated RSSI values are not deduplicated.
+Open <http://localhost:5001> on laptop 4. The header must show `MQTT: connected`. Every MQTT callback is logged in the container console and added as a separate table row; repeated payloads and repeated RSSI values are not deduplicated.
 
 The columns are:
 
@@ -246,7 +248,7 @@ The dashboard retains the latest 20,000 events in memory. Browser stream reconne
 
 ### Arduino cannot connect to MQTT
 
-- Ensure its `mqttServer` matches laptop 3's address.
+- Ensure its `mqtt_server` matches laptop 3's address.
 - Confirm the board joined the same hotspot.
 - Confirm TCP port 1883 is allowed through laptop 3's firewall.
 - Watch `docker compose logs -f mosquitto` on laptop 3 while resetting the board.
@@ -260,7 +262,8 @@ This is a WiFi association/authentication failure; waiting longer will not fix i
 - Set the hotspot to 2.4 GHz and WPA2/compatibility mode, not 5 GHz-only or WPA3-only.
 - Disconnect another device if the phone has reached its hotspot client limit.
 - Reset the Nano after changing hotspot settings.
-- The sketch prints the same numeric `Status code:` format as the supplied reference code and retries every 20 seconds.
+- The sketch retries every 10 seconds. Use the serial connection messages and
+  `WiFi.status()` during deeper debugging if the problem continues.
 
 ### Serial Monitor shows no BLE detection
 
