@@ -86,7 +86,7 @@ in its MQTT topic.
 |---|---|
 | `arduino/receiver_001/receiver_001.ino` | Deployment sketch for receiver 001 |
 | `arduino/receiver_002/receiver_002.ino` | Deployment sketch for receiver 002 |
-| `arduino/connection_test/connection_test.ino` | Standalone LED, Wi-Fi, MQTT, and BLE diagnostic |
+| `arduino/connection_test/connection_test.ino` | Standalone LED wiring test |
 | `ESW_BLE_Code_1.ino` | Supplied/reference single-receiver sketch |
 | `broker/` | Mosquitto configuration and Docker Compose service |
 | `dashboard/` | Flask dashboard, tests, and Docker Compose service |
@@ -116,24 +116,19 @@ Use the hotspot/local-network IPv4 address of the laptop running Mosquitto for
 its `002` sketch. Open Serial Monitor at 115200 baud; each sketch waits for the
 serial connection during startup.
 
-## Test all Arduino connections
+## Test the LED wiring
 
-Before flashing a deployment sketch, open
-`arduino/connection_test/connection_test.ino`, enter the local Wi-Fi
-credentials and broker IP, and upload it. Open Serial Monitor at 115200 baud.
+Upload `arduino/connection_test/connection_test.ino`. It requires no Wi-Fi,
+MQTT, or BLE configuration and automatically repeats this sequence:
 
-The test:
+1. Built-in/D13 LED
+2. External D2 MQTT LED
+3. External D3 activity LED
+4. All three LEDs together
 
-1. Lights the built-in/D13, D2, and D3 LEDs separately, then together.
-2. Tries Wi-Fi up to three times.
-3. Connects to MQTT and publishes to `healthcheck/arduino`.
-4. Starts BLE and scans for the configured switch for 15 seconds.
-5. Prints a pass/fail summary and leaves one result LED on for each success:
-   D13 for Wi-Fi, D2 for MQTT, and D3 for BLE target detection.
-
-Press the BLE switch during the 15-second scan. LED wiring cannot be detected
-in software, so visually confirm the initial lighting sequence. Reset the
-Arduino to repeat the test.
+Each step remains on for 1.5 seconds. Open Serial Monitor at 115200 baud for
+labels while the sequence runs. If an external LED does not light, check its
+polarity, resistor, pin connection, and GND connection.
 
 ## Run the MQTT broker
 
