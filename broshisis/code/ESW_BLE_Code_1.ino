@@ -20,6 +20,48 @@ int wifi_status = WL_IDLE_STATUS;
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
 
+// ── LED Pin Definitions ──────────────────────────────────────────────────────
+// LED_BUILTIN (pin 13) : WiFi status   – ON = connected, OFF = not connected
+// LED_WIFI    (pin 2)  : MQTT status   – ON = connected, OFF = not connected
+// LED_BLE     (pin 3)  : BLE/MQTT events
+//                        BLE packet received  → fast double-blink (2 × 100 ms)
+//                        MQTT publish sent    → slow single blink  (1 × 400 ms)
+const int LED_WIFI = 2;
+const int LED_BLE  = 3;
+
+// Helper: update WiFi status LED
+void update_wifi_led()
+{
+  digitalWrite(LED_BUILTIN, (WiFi.status() == WL_CONNECTED) ? HIGH : LOW);
+}
+
+// Helper: update MQTT status LED
+void update_mqtt_led()
+{
+  digitalWrite(LED_WIFI, client.connected() ? HIGH : LOW);
+}
+
+// Helper: fast double-blink on LED_BLE (BLE packet received)
+void blink_ble_received()
+{
+  for (int i = 0; i < 2; i++)
+  {
+    digitalWrite(LED_BLE, HIGH);
+    delay(100);
+    digitalWrite(LED_BLE, LOW);
+    delay(100);
+  }
+}
+
+// Helper: slow single blink on LED_BLE (MQTT publish sent)
+void blink_mqtt_sent()
+{
+  digitalWrite(LED_BLE, HIGH);
+  delay(400);
+  digitalWrite(LED_BLE, LOW);
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 void wifi_reconnect()
 {
   Serial.print("Attempting to connect to WiFi SSID: ");
@@ -34,15 +76,21 @@ void mqtt_reconnect()
   if (wifi_status != WL_CONNECTED)
   {
     Serial.println("WiFi disconnected");
+    update_wifi_led();
 
     while (wifi_status != WL_CONNECTED)
     {
       wifi_reconnect();
       delay(10000);
+      wifi_status = WiFi.status();
     }
     Serial.println("Reconnected to WiFi");
     Serial.println(); 
+    Serial.println();
+    update_wifi_led();
   } 
+
+  update_mqtt_led();
 
   while (!client.connected())
   {
@@ -52,6 +100,7 @@ void mqtt_reconnect()
     {
       Serial.println("Connected to MQTT Server");
       Serial.println();
+      update_mqtt_led();
     }
 
     else
@@ -59,6 +108,7 @@ void mqtt_reconnect()
       Serial.print("MQTT Connection Failed, rc=");
       Serial.println(client.state());
       Serial.println("Waiting 5 seconds before attempting to reconnect");
+      update_mqtt_led();
       delay(5000);
     }
   }
@@ -69,6 +119,14 @@ void setup()
 {
   Serial.begin(115200);
   while (!Serial);
+
+  // Initialise LED pins
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(LED_WIFI,    OUTPUT);
+  pinMode(LED_BLE,     OUTPUT);
+  digitalWrite(LED_BUILTIN, LOW);
+  digitalWrite(LED_WIFI,    LOW);
+  digitalWrite(LED_BLE,     LOW);
 
   String fv = WiFi.firmwareVersion();
 
@@ -88,9 +146,11 @@ void setup()
   {
     wifi_reconnect(); 
     delay(10000);
+    wifi_status = WiFi.status();
   }
   Serial.println("Connected to WiFi");
   Serial.println();
+  update_wifi_led();
 
   if (!BLE.begin())
   {
@@ -109,6 +169,7 @@ void loop()
 { 
   if (!client.connected())
   {
+    update_mqtt_led();
     mqtt_reconnect();
   }
   client.loop();
@@ -122,6 +183,9 @@ void loop()
 
     packetCounter ++;
     Serial.println("Discovered target peripheral");
+
+    // BLE packet received – fast double-blink
+    blink_ble_received();
 
     // Print Packet Count
     Serial.print("Packet Count: ");
@@ -148,6 +212,9 @@ void loop()
       client.publish("BLEReceiver/001", attributes);
       Serial.println("Data Sent");
       Serial.println();
+
+      // MQTT publish sent – slow single blink
+      blink_mqtt_sent();
     }
   }
 
