@@ -3,21 +3,21 @@
 #include <PubSubClient.h>
 
 // WiFi Credentials
-char ssid[] = "YOUR_HOTSPOT_NAME";
-char pass[] = "YOUR_HOTSPOT_PASSWORD";
+char ssid[] = "insert";
+char pass[] = "insert";
 
 // EH Switch BLE MAC Address
-const char* targetAddress = "E2:15:00:0A:72:43";
+const char* targetAddress = "E2:15:00:0A:72:32";
 
-const char* receiverId = "001";
-const char* mqttClientId = "BLEReceiver001";
-const char* mqttTopic = "BLEReceiver/001";
+const char* receiverId = "009";
+const char* mqttClientId = "BLEReceiver009";
+const char* mqttTopic = "BLEReceiver/009";
 
 int packetCounter = 0;
 unsigned long lastBLEScan = 0;
 
 // MQTT Server Settings
-IPAddress mqtt_server(172, 20, 10, 2);
+IPAddress mqtt_server(172, 20, 10, 4);
 
 int wifi_status = WL_IDLE_STATUS;
 
@@ -33,7 +33,7 @@ bool queuedActivityIncludesPublish = false;
 byte activityStep = 0;
 unsigned long nextActivityChange = 0;
 const int ACTIVITY_LEVELS[] = {HIGH, LOW, HIGH, LOW, HIGH};
-const unsigned int ACTIVITY_DURATIONS[] = {120, 180, 60, 80, 60};
+const unsigned int ACTIVITY_DURATIONS[] = {90, 90, 50, 60, 50};
 
 WiFiClient wifiClient;
 PubSubClient client(wifiClient);
