@@ -9,9 +9,9 @@ char pass[] = "insert";
 // EH Switch BLE MAC Address
 const char* targetAddress = "E2:15:00:0A:72:32";
 
-const char* receiverId = "009";
-const char* mqttClientId = "BLEReceiver009";
-const char* mqttTopic = "BLEReceiver/009";
+const char* receiverId = "001";
+const char* mqttClientId = "BLEReceiver001";
+const char* mqttTopic = "BLEReceiver/001";
 
 int packetCounter = 0;
 unsigned long lastBLEScan = 0;

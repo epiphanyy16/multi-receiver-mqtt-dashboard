@@ -2,13 +2,14 @@
 
 This folder holds the Nano 33 IoT sketches that listen for one energy-harvesting BLE switch, publish each sighting over MQTT, and show connection/activity on three LEDs.
 
-The two deployment boards run the same program with different identities. They do not talk to each other. Each independently scans, counts packets, and publishes to its own topic.
+The deployment boards run the same program with different identities. They do not talk to each other. Each independently scans, counts packets, and publishes to its own topic.
 
 ```text
-BLE switch (MAC E2:15:00:0A:72:43)
+BLE switch (MAC E2:15:00:0A:72:32)
         │
         ├── Arduino 001  →  MQTT topic BLEReceiver/001
-        └── Arduino 002  →  MQTT topic BLEReceiver/002
+        ├── Arduino 002  →  MQTT topic BLEReceiver/002
+        └── Arduino 003  →  MQTT topic BLEReceiver/003
                                     │
                                     ▼
                              Mosquitto :1883
@@ -25,6 +26,7 @@ The boards never pair with the switch and never read GATT characteristics. They 
 |---|---|
 | `receiver_001/receiver_001.ino` | Default sketch for board 001. Wi-Fi: `WiFi.begin`, then wait 10 s. |
 | `receiver_002/receiver_002.ino` | Same as 001 except IDs/topic. |
+| `receiver_003/receiver_003.ino` | Same as 001 except IDs/topic. |
 | `dotted_wifi/receiver_001/receiver_001.ino` | Same BLE/MQTT/LED logic; Wi-Fi prints `.` every 500 ms. |
 | `dotted_wifi/receiver_002/receiver_002.ino` | Dotted Wi-Fi variant for board 002. |
 | `connection_test/connection_test.ino` | LED wiring test only. No Wi-Fi, MQTT, or BLE. |
@@ -51,11 +53,11 @@ IPAddress mqtt_server(172, 20, 10, 2);
 
 ## Per-board identity
 
-| Constant | Receiver 001 | Receiver 002 | Why |
-|---|---|---|---|
-| `receiverId` | `"001"` | `"002"` | Goes in the JSON payload. |
-| `mqttClientId` | `"BLEReceiver001"` | `"BLEReceiver002"` | Must be unique. Two boards with the same client ID kick each other off the broker. |
-| `mqttTopic` | `"BLEReceiver/001"` | `"BLEReceiver/002"` | Dashboard expects topic suffix to match `receiver_id`. |
+| Constant | Receiver 001 | Receiver 002 | Receiver 003 | Why |
+|---|---|---|---|---|
+| `receiverId` | `"001"` | `"002"` | `"003"` | Goes in the JSON payload. |
+| `mqttClientId` | `"BLEReceiver001"` | `"BLEReceiver002"` | `"BLEReceiver003"` | Must be unique. Two boards with the same client ID kick each other off the broker. |
+| `mqttTopic` | `"BLEReceiver/001"` | `"BLEReceiver/002"` | `"BLEReceiver/003"` | Dashboard expects topic suffix to match `receiver_id`. |
 
 MQTT port is **1883**. Publishes use **QoS 0** (PubSubClient default): fire-and-forget, no retry, no queue. If Wi-Fi or MQTT is down when an advertisement arrives, that event is lost.
 
@@ -196,7 +198,7 @@ If another advertisement arrives while a pattern is running, it is **queued once
 
 ## Functions (deployment sketches)
 
-Receiver 001 and 002 share these functions. Only identity constants differ.
+Receiver 001, 002, and 003 share these functions. Only identity constants differ.
 
 ### `updateConnectionLEDs()`
 
